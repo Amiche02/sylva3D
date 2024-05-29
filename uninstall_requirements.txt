@@ -36,3 +36,5 @@ PyMesh
 jax
 jaxlib
 tensorflow
+numpy
+matplotlib

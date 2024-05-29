@@ -7,7 +7,7 @@ import torch.nn.functional as F
 from torch.autograd import Function
 from torch.cuda.amp import custom_bwd, custom_fwd
 
-import tinycudann as tcnn
+# import tinycudann as tcnn
 
 
 def chunk_batch(func, chunk_size, move_to_cpu, *args, **kwargs):
@@ -116,4 +116,4 @@ def scale_anything(dat, inp_scale, tgt_scale):
 def cleanup():
     gc.collect()
     torch.cuda.empty_cache()
-    tcnn.free_temporary_memory()
+    # tcnn.free_temporary_memory()

@@ -44,14 +44,6 @@ else:
 # Change back to the sylva3D repository directory
 os.chdir(path.join(HOME_DIR, 'sylva3D'))
 
-# Uninstall all the preinstalled libraries to make sure the installation is clean
-uninstall_script = path.join(HOME_DIR, 'sylva3D', 'uninstall_requirements.sh')
-if path.exists(uninstall_script):
-    os.system('chmod +x uninstall_requirements.sh')
-    os.system('./uninstall_requirements.sh')
-else:
-    print(f"{uninstall_script} does not exist")
-
 # Install missing dependencies to avoid conflicts
 os.system('pip install matplotlib torch torchvision')
 
@@ -72,8 +64,3 @@ tinycudann_whl = 'tinycudann-1.7-cp310-cp310-linux_x86_64.whl'
 if not path.exists(path.join(HOME_DIR, 'sylva3D', tinycudann_whl)):
     os.system(f'wget "https://j2q5.c17.e2-1.dev/download/pogscafe/{tinycudann_whl}" -O {path.join(HOME_DIR, "sylva3D", tinycudann_whl)}')
 os.system(f'pip install {path.join(HOME_DIR, "sylva3D", tinycudann_whl)}')
-
-# # Install gradio and update torch and xformers
-# os.system('pip install gradio==3.48.0')
-# os.system('pip uninstall -y xformers')
-# os.system('pip install --no-cache-dir torch==2.1.0 torchvision==0.16.0 torchaudio==2.1.0 xformers --index-url https://download.pytorch.org/whl/cu118')

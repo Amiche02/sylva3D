@@ -3,7 +3,7 @@ import numpy as np
 
 import torch
 import torch.nn as nn
-import tinycudann as tcnn
+# import tinycudann as tcnn  # Comment out tinycudann for now
 
 from pytorch_lightning.utilities.rank_zero import rank_zero_debug, rank_zero_info
 
@@ -41,19 +41,22 @@ class ProgressiveBandHashGrid(nn.Module):
     def __init__(self, in_channels, config):
         super().__init__()
         self.n_input_dims = in_channels
-        encoding_config = config.copy()
-        encoding_config['otype'] = 'HashGrid'
-        with torch.cuda.device(get_rank()):
-            self.encoding = tcnn.Encoding(in_channels, encoding_config)
-        self.n_output_dims = self.encoding.n_output_dims
+        # Comment out tinycudann usage for now
+        # encoding_config = config.copy()
+        # encoding_config['otype'] = 'HashGrid'
+        # with torch.cuda.device(get_rank()):
+        #     self.encoding = tcnn.Encoding(in_channels, encoding_config)
+        # self.n_output_dims = self.encoding.n_output_dims
+        self.n_output_dims = config['n_levels'] * config['n_features_per_level']  # Fix output dimensions
         self.n_level = config['n_levels']
         self.n_features_per_level = config['n_features_per_level']
         self.start_level, self.start_step, self.update_steps = config['start_level'], config['start_step'], config['update_steps']
         self.current_level = self.start_level
-        self.mask = torch.zeros(self.n_level * self.n_features_per_level, dtype=torch.float32, device=get_rank())
+        self.mask = torch.zeros(self.n_output_dims, dtype=torch.float32, device=get_rank())  # Initialize mask based on output dimensions
 
     def forward(self, x):
-        enc = self.encoding(x)
+        # Simulate encoding for debugging
+        enc = torch.randn(x.size(0), self.n_output_dims, device=x.device)  # Simulate encoded output
         enc = enc * self.mask
         return enc
 
@@ -63,6 +66,7 @@ class ProgressiveBandHashGrid(nn.Module):
             rank_zero_info(f'Update grid level to {current_level}')
         self.current_level = current_level
         self.mask[:self.current_level * self.n_features_per_level] = 1.
+        rank_zero_debug(f"Mask updated to level {self.current_level}, Mask shape: {self.mask.shape}")
 
 
 class CompositeEncoding(nn.Module):
@@ -86,8 +90,10 @@ def get_encoding(n_input_dims, config):
     elif config.otype == 'ProgressiveBandHashGrid':
         encoding = ProgressiveBandHashGrid(n_input_dims, config_to_primitive(config))
     else:
-        with torch.cuda.device(get_rank()):
-            encoding = tcnn.Encoding(n_input_dims, config_to_primitive(config))
+        # Comment out tinycudann usage for now
+        # with torch.cuda.device(get_rank()):
+        #     encoding = tcnn.Encoding(n_input_dims, config_to_primitive(config))
+        raise NotImplementedError(f"Encoding type {config.otype} not implemented without tinycudann.")
     encoding = CompositeEncoding(encoding, include_xyz=config.get('include_xyz', False), xyz_scale=2., xyz_offset=-1.)
     return encoding
 
@@ -140,47 +146,19 @@ class VanillaMLP(nn.Module):
 
 
 def sphere_init_tcnn_network(n_input_dims, n_output_dims, config, network):
-    rank_zero_debug('Initialize tcnn MLP to approximately represent a sphere.')
-    """
-    from https://github.com/NVlabs/tiny-cuda-nn/issues/96
-    It's the weight matrices of each layer laid out in row-major order and then concatenated.
-    Notably: inputs and output dimensions are padded to multiples of 8 (CutlassMLP) or 16 (FullyFusedMLP).
-    The padded input dimensions get a constant value of 1.0,
-    whereas the padded output dimensions are simply ignored,
-    so the weights pertaining to those can have any value.
-    """
-    padto = 16 if config.otype == 'FullyFusedMLP' else 8
-    n_input_dims = n_input_dims + (padto - n_input_dims % padto) % padto
-    n_output_dims = n_output_dims + (padto - n_output_dims % padto) % padto
-    data = list(network.parameters())[0].data
-    assert data.shape[0] == (n_input_dims + n_output_dims) * config.n_neurons + (config.n_hidden_layers - 1) * config.n_neurons**2
-    new_data = []
-    # first layer
-    weight = torch.zeros((config.n_neurons, n_input_dims)).to(data)
-    torch.nn.init.constant_(weight[:, 3:], 0.0)
-    torch.nn.init.normal_(weight[:, :3], 0.0, math.sqrt(2) / math.sqrt(config.n_neurons))
-    new_data.append(weight.flatten())
-    # hidden layers
-    for i in range(config.n_hidden_layers - 1):
-        weight = torch.zeros((config.n_neurons, config.n_neurons)).to(data)
-        torch.nn.init.normal_(weight, 0.0, math.sqrt(2) / math.sqrt(config.n_neurons))
-        new_data.append(weight.flatten())
-    # last layer
-    weight = torch.zeros((n_output_dims, config.n_neurons)).to(data)
-    torch.nn.init.normal_(weight, mean=math.sqrt(math.pi) / math.sqrt(config.n_neurons), std=0.0001)
-    new_data.append(weight.flatten())
-    new_data = torch.cat(new_data)
-    data.copy_(new_data)
+    raise NotImplementedError("Sphere initialization for tinycudann networks not implemented without tinycudann.")
 
 
 def get_mlp(n_input_dims, n_output_dims, config):
     if config.otype == 'VanillaMLP':
         network = VanillaMLP(n_input_dims, n_output_dims, config_to_primitive(config))
     else:
-        with torch.cuda.device(get_rank()):
-            network = tcnn.Network(n_input_dims, n_output_dims, config_to_primitive(config))
-            if config.get('sphere_init', False):
-                sphere_init_tcnn_network(n_input_dims, n_output_dims, config, network)
+        # Comment out tinycudann usage for now
+        # with torch.cuda.device(get_rank()):
+        #     network = tcnn.Network(n_input_dims, n_output_dims, config_to_primitive(config))
+        #     if config.get('sphere_init', False):
+        #         sphere_init_tcnn_network(n_input_dims, n_output_dims, config, network)
+        raise NotImplementedError(f"MLP type {config.otype} not implemented without tinycudann.")
     return network
 
 
@@ -205,11 +183,5 @@ def get_encoding_with_network(n_input_dims, n_output_dims, encoding_config, netw
         network = get_mlp(encoding.n_output_dims, n_output_dims, network_config)
         encoding_with_network = EncodingWithNetwork(encoding, network)
     else:
-        with torch.cuda.device(get_rank()):
-            encoding_with_network = tcnn.NetworkWithInputEncoding(
-                n_input_dims=n_input_dims,
-                n_output_dims=n_output_dims,
-                encoding_config=config_to_primitive(encoding_config),
-                network_config=config_to_primitive(network_config)
-            )
+        raise NotImplementedError(f"Encoding with network not implemented for the given config without tinycudann.")
     return encoding_with_network

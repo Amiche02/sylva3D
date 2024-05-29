@@ -29,3 +29,8 @@ tensorboard
 rembg
 segment_anything
 gradio==3.50.2
+streamlit
+fire
+triton
+open3d
+PyMesh

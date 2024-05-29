@@ -1,6 +1,6 @@
 torch
 torchvision
-diffusers[torch]
+diffusers
 xformers
 transformers
 bitsandbytes
@@ -28,13 +28,3 @@ tensorboard
 rembg
 segment_anything
 gradio
-streamlit
-fire
-triton
-open3d
-PyMesh
-jax
-jaxlib
-tensorflow
-numpy
-matplotlib

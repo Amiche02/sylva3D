@@ -1,7 +1,7 @@
 import os
 from os import path
 
-HOME_DIR = '/home/utilisateur/Documents/test'
+HOME_DIR = '/root'
 TEMP_DIR = path.join(HOME_DIR, 'temp')
 
 # Create the temporary directory if it does not exist
@@ -52,14 +52,19 @@ if path.exists(uninstall_script):
 else:
     print(f"{uninstall_script} does not exist")
 
-# Install missing dependencies to avoid conflicts
-os.system('pip install matplotlib torch torchvision')
-
 # Install Python dependencies with pip
 dependencies = [
     'typing_extensions', 'triton', 'fire', 'opencv-python', 'rembg',
-    'git+https://github.com/facebookresearch/segment-anything.git', '-r requirements.txt', 'gdown'
+    'git+https://github.com/facebookresearch/segment-anything.git', 'gdown',
+    'diffusers[torch]==0.19.3', 'xformers==0.0.16', 'transformers>=4.25.1',
+    'bitsandbytes==0.35.4', 'decord==0.6.0', 'pytorch-lightning<2', 'omegaconf==2.2.3',
+    'nerfacc==0.3.3', 'trimesh==3.9.8', 'pyhocon==0.3.57', 'icecream==2.1.0',
+    'PyMCubes==0.1.2', 'accelerate', 'modelcards', 'einops', 'ftfy', 'piq',
+    'matplotlib', 'opencv-python', 'imageio', 'imageio-ffmpeg', 'scipy', 'pyransac3d',
+    'torch_efficient_distloss', 'tensorboard', 'rembg', 'segment_anything',
+    'gradio==3.50.2', 'streamlit', 'fire', 'triton', 'open3d', 'PyMesh'
 ]
+
 for dep in dependencies:
     os.system(f'pip install {dep}')
 

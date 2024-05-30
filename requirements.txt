@@ -34,3 +34,4 @@ fire
 triton
 open3d
 PyMesh
+ipykernel

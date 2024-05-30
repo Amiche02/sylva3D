@@ -40,3 +40,4 @@ num_views: 6
 camera_embedding_type: 'e_de_da_sincos'
 
 enable_xformers_memory_efficient_attention: true
+num_gpus: 2

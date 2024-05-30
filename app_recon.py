@@ -76,7 +76,7 @@ def sam_init():
     sam_checkpoint = os.path.join(os.path.dirname(__file__), "sam_pt", "sam_vit_h_4b8939.pth")
     model_type = "vit_h"
 
-    # Load the model on one GPU
+    # Load the model on a single GPU
     sam = sam_model_registry[model_type](checkpoint=sam_checkpoint).to(device="cuda:0")
     
     # Use DataParallel to use multiple GPUs
@@ -84,6 +84,7 @@ def sam_init():
     
     predictor = SamPredictor(sam)
     return predictor
+
 
 
 
@@ -165,13 +166,15 @@ def load_wonder3d_pipeline(cfg):
         torch_dtype=weight_dtype
     )
 
+    # Move the unwrapped pipeline to the GPU
+    if torch.cuda.is_available():
+        pipeline = pipeline.to(f'cuda:{_GPU_ID}')
+
     # Use DataParallel for the pipeline
     pipeline.unet = torch.nn.DataParallel(pipeline.unet, device_ids=[0, 1])
     
-    # Move the pipeline to the GPUs
-    if torch.cuda.is_available():
-        pipeline.to('cuda:0')
     return pipeline
+
 
 
 from mvdiffusion.data.single_image_dataset import SingleImageDataset
@@ -197,13 +200,13 @@ def run_pipeline(pipeline, cfg, single_image, guidance_scale, steps, seed, crop_
     generator = torch.Generator(device=pipeline.unet.device).manual_seed(seed)
 
     # Distribute images across GPUs
-    imgs_in = torch.cat([batch['imgs_in']] * 2, dim=0).to(weight_dtype)
-    camera_embeddings = torch.cat([batch['camera_embeddings']] * 2, dim=0).to(weight_dtype)
-    task_embeddings = torch.cat([batch['normal_task_embeddings'], batch['color_task_embeddings']], dim=0).to(weight_dtype)
-    camera_embeddings = torch.cat([camera_embeddings, task_embeddings], dim=-1).to(weight_dtype)
+    imgs_in = torch.cat([batch['imgs_in']] * 2, dim=0).to(weight_dtype).to('cuda')
+    camera_embeddings = torch.cat([batch['camera_embeddings']] * 2, dim=0).to(weight_dtype).to('cuda')
+    task_embeddings = torch.cat([batch['normal_task_embeddings'], batch['color_task_embeddings']], dim=0).to(weight_dtype).to('cuda')
+    camera_embeddings = torch.cat([camera_embeddings, task_embeddings], dim=-1).to(weight_dtype).to('cuda')
 
     # Rearrange images for GPUs
-    imgs_in = rearrange(imgs_in, "Nv C H W -> (Nv) C H W")
+    imgs_in = rearrange(imgs_in, "Nv C H W -> (Nv) C H W").to('cuda')
 
     # Run the pipeline on the GPUs
     out = pipeline(
@@ -249,6 +252,7 @@ def run_pipeline(pipeline, cfg, single_image, guidance_scale, steps, seed, crop_
 
     out = images_pred + normals_pred
     return out
+
 
 
 
@@ -311,13 +315,11 @@ def run_demo():
 
     # parse YAML config to OmegaConf
     cfg = load_config("./configs/mvdiffusion-joint-ortho-6views.yaml")
-    # print(cfg)
     schema = OmegaConf.structured(TestConfig)
     cfg = OmegaConf.merge(schema, cfg)
 
     pipeline = load_wonder3d_pipeline(cfg)
     torch.set_grad_enabled(False)
-    pipeline.to(f'cuda:{_GPU_ID}')
 
     predictor = sam_init()
 
@@ -349,12 +351,7 @@ def run_demo():
                     visible=True,
                 )
             with gr.Column(scale=1):
-                ## add 3D Model
-                obj_3d = gr.Model3D(
-                                    # clear_color=[0.0, 0.0, 0.0, 0.0], 
-                                    label="3D Model", height=320, 
-                                    # camera_position=[0,0,2.0]
-                                    )
+                obj_3d = gr.Model3D(label="3D Model", height=320)
                 processed_image_highres = gr.Image(type='pil', image_mode='RGBA', visible=False, tool=None)
         with gr.Row(variant='panel'):
             with gr.Column(scale=1):
@@ -395,10 +392,6 @@ def run_demo():
 
                         mode = gr.Textbox('train', visible=False)
                         data_dir = gr.Textbox('outputs', visible=False)
-                    # crop_size = 192
-                    # with gr.Row():
-                    #     method = gr.Radio(choices=['instant-nsr-pl', 'NeuS'], label='Method (Default: instant-nsr-pl)', value='instant-nsr-pl')
-                # run_btn = gr.Button('Generate Normals and Colors', variant='primary', interactive=True)
                 run_btn = gr.Button('Reconstruct 3D model', variant='primary', interactive=True)
                 gr.Markdown("<span style='color:red'> Reconstruction may cost several minutes. Check results in instant-nsr-pl/exp/scene@{current-time}/ </span>")
         
@@ -428,7 +421,6 @@ def run_demo():
         )
 
         demo.queue().launch(share=True, max_threads=80)
-
 
 if __name__ == '__main__':
     fire.Fire(run_demo)

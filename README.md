@@ -11,7 +11,7 @@ conda activate sylv3D
 sudo apt-get install python3-venv
 
 python3 -m venv sylv3D
-sylv3D/Scripts/activate
+source sylv3D/bin/activate
 ```
 
 If you don't want to use a new virtual environent, then uninstall the old libraries to get the right version: 

@@ -1,0 +1,17 @@
+ray
+transforms3d
+tqdm
+opencv-python
+numba
+pycuda
+tensorboardX
+scikit-image
+trimesh
+yacs
+h5py
+loguru
+pyrender
+pyglet
+open3d
+git+https://github.com/mit-han-lab/torchsparse.git # torchsparse
+https://github.com/JamieWatson683/scikit-image/archive/single_mesh.zip # single mesh for measure.marching_cubes
